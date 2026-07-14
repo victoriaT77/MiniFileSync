@@ -12,7 +12,7 @@
 #include <signal.h>
 
 #define MAX_ARCHIVOS 1000
-#define NUM_WORKERS 2 // Puedes ajustar el numero de workers segun tu informe
+#define NUM_WORKERS 2 
 
 // Declaraciones de funciones que estan en los otros archivos compilados juntos
 int escanear_directorio(const char *directorio_origen, struct FileMetadata *lista, int max_archivos);
