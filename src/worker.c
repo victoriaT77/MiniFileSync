@@ -68,14 +68,16 @@ void ejecutar_worker(int id, int pipe_lectura) {
             break;
         }
 
-        // Construir la ruta de destino dentro de la carpeta backup/
-        // Ejemplo: si el origen es "origen/archivo.txt", se busca guardar en "backup/archivo.txt"
-        // Para simplificar, extraemos el nombre base despues de la primera barra '/'
-        char *nombre_base = strchr(ruta_origen, '/');
+        // BUSQUEDA EN REVERSA: strrchr encuentra la ULTIMA barra '/' de la ruta
+        // Esto previene fallos al extraer el archivo si se pasan rutas absolutas (ej. /mnt/c/Users/...)
+        char *nombre_base = strrchr(ruta_origen, '/');
         char ruta_destino[MAX_PATH];
+        
         if (nombre_base != NULL) {
+            // Si habia una barra (ej: /var/log/datos.txt), nombre_base apunta a "/datos.txt"
             snprintf(ruta_destino, sizeof(ruta_destino), "backup%s", nombre_base);
         } else {
+            // Si el archivo estaba en la carpeta actual sin barras (ej: archivo.txt)
             snprintf(ruta_destino, sizeof(ruta_destino), "backup/%s", ruta_origen);
         }
 
