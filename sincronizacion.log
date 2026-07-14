@@ -1,0 +1,4 @@
+[21:30:17] Worker 1 copio backup/archivo1.txt
+[21:30:17] Worker 2 copio backup/archivo2.txt
+[21:33:00] Worker 1 copio backup/archivo1.txt
+[21:33:00] Worker 2 copio backup/archivo2.txt
