@@ -14,7 +14,6 @@ int copiarArchivo(const char *origen, const char *destino, long *bytes_copiados)
     int fd_origen = open(origen, O_RDONLY);
     if (fd_origen < 0) return -1;
 
-    // Abrimos o creamos el destino con permisos de lectura/escritura (0644)
     int fd_destino = open(destino, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd_destino < 0) {
         close(fd_origen);
@@ -25,20 +24,19 @@ int copiarArchivo(const char *origen, const char *destino, long *bytes_copiados)
     ssize_t leidos, escritos;
     *bytes_copiados = 0;
 
-    // Bucle de lectura y escritura pura
     while ((leidos = read(fd_origen, buffer, BUFFER_SIZE)) > 0) {
         escritos = write(fd_destino, buffer, leidos);
         if (escritos != leidos) {
             close(fd_origen);
             close(fd_destino);
-            return -1; // Error en la escritura (ej. disco lleno)
+            return -1;
         }
         *bytes_copiados += escritos;
     }
 
     close(fd_origen);
     close(fd_destino);
-    return 0; // Copia exitosa
+    return 0;
 }
 
 // Funcion para enviar la notificacion al Logger a traves de la FIFO
@@ -54,37 +52,28 @@ void notificar_logger(const char *mensaje) {
 void ejecutar_worker(int id, int pipe_lectura) {
     char ruta_origen[MAX_PATH];
     
-    // Conectarse a la Memoria Compartida ya creada por el padre
     int shm_fd = shm_open(SHM_NAME, O_RDWR, 0666);
     struct stats *shared_stats = mmap(NULL, sizeof(struct stats), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
     
-    // Conectarse al Semaforo ya creado por el padre
     sem_t *sem = sem_open(SEM_NAME, 0);
 
-    // Bucle continuo: el worker se bloquea en read() esperando que el Monitor le mande una ruta por el pipe
     while (read(pipe_lectura, ruta_origen, MAX_PATH) > 0) {
-        // Si el monitor envia "FIN", el worker rompe el bucle y termina limpiamente
         if (strcmp(ruta_origen, "FIN") == 0) {
             break;
         }
 
-        // BUSQUEDA EN REVERSA: strrchr encuentra la ULTIMA barra '/' de la ruta
-        // Esto previene fallos al extraer el archivo si se pasan rutas absolutas (ej. /mnt/c/Users/...)
         char *nombre_base = strrchr(ruta_origen, '/');
         char ruta_destino[MAX_PATH];
         
         if (nombre_base != NULL) {
-            // Si habia una barra (ej: /var/log/datos.txt), nombre_base apunta a "/datos.txt"
             snprintf(ruta_destino, sizeof(ruta_destino), "backup%s", nombre_base);
         } else {
-            // Si el archivo estaba en la carpeta actual sin barras (ej: archivo.txt)
             snprintf(ruta_destino, sizeof(ruta_destino), "backup/%s", ruta_origen);
         }
 
         long bytes_este_archivo = 0;
         int resultado = copiarArchivo(ruta_origen, ruta_destino, &bytes_este_archivo);
 
-        // Seccion Critica protegida por el Semaforo POSIX
         sem_wait(sem);
         if (resultado == 0) {
             shared_stats->archivos_copiados++;
@@ -92,25 +81,32 @@ void ejecutar_worker(int id, int pipe_lectura) {
         } else {
             shared_stats->errores++;
         }
-        sem_post(sem); // Fin de la Seccion Critica
+        sem_post(sem);
 
-        // Preparar y enviar mensaje formateado con marca de tiempo al Logger
+        // OBTENCION DE FECHA Y HORA COMPLETAS (Corregido segun la Guia del Laboratorio)
         time_t ahora = time(NULL);
         struct tm *t = localtime(&ahora);
-        char msg_logger[MAX_PATH + 64];
+        char msg_logger[MAX_PATH + 128];
         
+        // Explicacion tecnica: t->tm_year arranca en 1900, t->tm_mon arranca en 0 (Enero)
+        int anio = t->tm_year + 1900;
+        int mes = t->tm_mon + 1;
+        int dia = t->tm_mday;
+
+        // Extraemos solo el nombre del archivo final para que el Log se vea limpio
+        char *solo_nombre = (nombre_base != NULL) ? (nombre_base + 1) : ruta_origen;
+
         if (resultado == 0) {
-            snprintf(msg_logger, sizeof(msg_logger), "[%02d:%02d:%02d] Worker %d copio %s\n", 
-                     t->tm_hour, t->tm_min, t->tm_sec, id, ruta_destino);
+            snprintf(msg_logger, sizeof(msg_logger), "[%04d-%02d-%02d %02d:%02d:%02d] copiado %s (Worker %d)\n", 
+                     anio, mes, dia, t->tm_hour, t->tm_min, t->tm_sec, solo_nombre, id);
         } else {
-            snprintf(msg_logger, sizeof(msg_logger), "[%02d:%02d:%02d] Worker %d ERROR al copiar %s\n", 
-                     t->tm_hour, t->tm_min, t->tm_sec, id, ruta_origen);
+            snprintf(msg_logger, sizeof(msg_logger), "[%04d-%02d-%02d %02d:%02d:%02d] ERROR al copiar %s (Worker %d)\n", 
+                     anio, mes, dia, t->tm_hour, t->tm_min, t->tm_sec, solo_nombre, id);
         }
         
         notificar_logger(msg_logger);
     }
 
-    // Limpieza de recursos locales asignados al proceso hijo antes de morir
     munmap(shared_stats, sizeof(struct stats));
     close(shm_fd);
     sem_close(sem);

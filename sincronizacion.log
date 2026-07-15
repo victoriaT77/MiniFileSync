@@ -1,5 +1,5 @@
-[23:20:41] Worker 1 copio backup/archivo1.txt
-[23:20:41] Worker 2 copio backup/archivo2.txt
-[23:27:23] Worker 1 copio backup/nota.txt
-[23:30:00] Worker 1 copio backup/nota.txt
-[23:34:03] Worker 1 copio backup/mi_clase.pdf
+[2026-07-14 23:07:22] copiado nota.txt (Worker 2)
+[2026-07-14 23:07:22] copiado mi_clase.pdf (Worker 1)
+[2026-07-14 23:08:23] copiado archivo2.txt (Worker 2)
+[2026-07-14 23:08:59] copiado archivo2.txt (Worker 2)
+[2026-07-14 23:08:59] copiado archivo1.txt (Worker 1)
