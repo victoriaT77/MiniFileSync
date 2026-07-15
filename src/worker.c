@@ -9,7 +9,6 @@
 #include <semaphore.h>
 #include <time.h>
 
-// Funcion requerida para la copia fisica de archivos usando E/S sin bufer de C (Llamadas al sistema)
 int copiarArchivo(const char *origen, const char *destino, long *bytes_copiados) {
     int fd_origen = open(origen, O_RDONLY);
     if (fd_origen < 0) return -1;
@@ -39,7 +38,6 @@ int copiarArchivo(const char *origen, const char *destino, long *bytes_copiados)
     return 0;
 }
 
-// Funcion para enviar la notificacion al Logger a traves de la FIFO
 void notificar_logger(const char *mensaje) {
     int fd_fifo = open(FIFO_NAME, O_WRONLY);
     if (fd_fifo >= 0) {
@@ -48,20 +46,28 @@ void notificar_logger(const char *mensaje) {
     }
 }
 
-// Funcion principal que ejecutara cada Worker hijo
 void ejecutar_worker(int id, int pipe_lectura) {
-    char ruta_origen[MAX_PATH];
+    char buffer_msg[MAX_PATH];
     
     int shm_fd = shm_open(SHM_NAME, O_RDWR, 0666);
     struct stats *shared_stats = mmap(NULL, sizeof(struct stats), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
-    
     sem_t *sem = sem_open(SEM_NAME, 0);
 
-    while (read(pipe_lectura, ruta_origen, MAX_PATH) > 0) {
-        if (strcmp(ruta_origen, "FIN") == 0) {
+    while (read(pipe_lectura, buffer_msg, MAX_PATH) > 0) {
+        if (strcmp(buffer_msg, "FIN") == 0) {
             break;
         }
 
+        char ruta_origen[MAX_PATH];
+        
+        // Desempaquetar el comando con formato de ejemplo de la guia
+        if (strncmp(buffer_msg, "COPIAR ", 7) == 0) {
+            strncpy(ruta_origen, buffer_msg + 7, MAX_PATH);
+        } else {
+            strncpy(ruta_origen, buffer_msg, MAX_PATH);
+        }
+
+        // Aislamiento universal del nombre del archivo final
         char *nombre_base = strrchr(ruta_origen, '/');
         char ruta_destino[MAX_PATH];
         
@@ -83,17 +89,15 @@ void ejecutar_worker(int id, int pipe_lectura) {
         }
         sem_post(sem);
 
-        // OBTENCION DE FECHA Y HORA COMPLETAS (Corregido segun la Guia del Laboratorio)
+        // Registro de Auditoria con estructura [fecha-hora] limpia
         time_t ahora = time(NULL);
         struct tm *t = localtime(&ahora);
         char msg_logger[MAX_PATH + 128];
         
-        // Explicacion tecnica: t->tm_year arranca en 1900, t->tm_mon arranca en 0 (Enero)
         int anio = t->tm_year + 1900;
         int mes = t->tm_mon + 1;
         int dia = t->tm_mday;
 
-        // Extraemos solo el nombre del archivo final para que el Log se vea limpio
         char *solo_nombre = (nombre_base != NULL) ? (nombre_base + 1) : ruta_origen;
 
         if (resultado == 0) {
