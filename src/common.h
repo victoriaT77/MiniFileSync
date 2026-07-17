@@ -17,7 +17,7 @@ struct stats {
     long errores;
 };
 
-// Estructura para almacenar los metadatos de un archivo en memoria
+//almacenar los metadatos de un archivo en memoria
 struct FileMetadata {
     char ruta[MAX_PATH];
     unsigned long inode;
