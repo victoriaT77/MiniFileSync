@@ -8,7 +8,7 @@ con un directorio de copia de seguridad mediante varios procesos que cooperan en
 
 El diseno del proyecto segmenta las responsabilidades del sistema en archivos independientes estructurados de la siguiente manera:
 
-* **`minisync-project/`**
+* **`minisync/`**
   * **`obj/`**: Directorio destinado al almacenamiento de los objetos binarios intermedios (.o) generados durante las etapas de compilacion.
   * **`src/`**
     * **`common.h`**: Definiciones de estructuras de datos globales, constantes comunes y nombres clave de los recursos IPC del Kernel.
