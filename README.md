@@ -37,7 +37,7 @@ A continuacion, se detallanN los requerimientos exigidos en la guia deL proyecto
 * **Mapeo en Codigo (`src/scanner.c`):**
   * *Implementacion:* En el codigo, `readdir()` lee cada archivo y la macro `S_ISDIR` detecta si es una subcarpeta para volver a llamar a la funcion. Usamos `lstat()` para leer la cedula de identidad de cada archivo (su inodo `st_ino`, tamano `st_size` y fecha `st_mtime`), garantizando que si hay un acceso directo logico no nos quedemos atrapados en un bucle.
 
-### B. Sincronizacion Incremental
+### B. Sincronizacion
 * **Requerimiento:** Copiar solo los archivos cambiados en tamano o fecha de modificacion.
 * **Mapeo en Codigo (`src/main.c`):**
   * *Implementacion:* En la funcion `archivo_requiere_sincronizacion()`, el monitor hace un `strcmp` del nombre y evalua: `if (actual->size != anteriores[i].size || actual->modification_time != anteriores[i].modification_time)`. Si da verdadero, se copia; si no, se ignora.
@@ -47,12 +47,12 @@ A continuacion, se detallanN los requerimientos exigidos en la guia deL proyecto
 * **Mapeo en Codigo (`src/main.c` y `src/worker.c`):**
   * *Implementacion:* El monitor crea los conductos con `pipe()`, hace el `fork()` y envia el string formateado usando `write(..., "COPIAR archivo.txt")`. El Worker esta bloqueado escuchando con `read()`, limpia los primeros 7 bytes (`strncmp`) y se queda con la ruta limpia para trabajar.
 
-### D. Creacion de Copias de Seguridad (E/S Pura)
+### D. Creacion de Copias de Seguridad 
 * **Requerimiento:** Guardar todo en `backup/` usando unicamente `open()`, `read()` y `write()`. Comandados como `cp` o `rsync` estan prohibidos.
 * **Mapeo en Codigo (`src/worker.c`):**
   * *Implementacion:* La funcion `copiarArchivo()` abre el archivo origen en modo lectura (`O_RDONLY`) y crea el destino en `backup/` con los permisos `0644` e indicando que si ya existia se borre lo viejo (`O_TRUNC`). Un bucle `while(read(...) > 0)` pasa los datos byte a byte usando un buffer temporal de 4KB.
 
-### E. Memoria Compartida y Semaforos (Mutacion Segura)
+### E. Memoria Compartida y Semaforos
 * **Requerimiento:** Proteger las estadisticas globales contra condiciones de carrera usando memoria compartida y semaforos POSIX.
 * **Mapeo en Codigo (`src/main.c` y `src/worker.c`):**
   * *Implementacion:* Usamos `shm_open()` y `mmap()` para mapear la pizarra publica (`struct stats`). Antes de incrementar los contadores, el Worker encierra la operacion entre `sem_wait(sem)` y `sem_post(sem)`, evitando que dos Workers escriban al mismo tiempo (condicion de carrera).
@@ -71,7 +71,7 @@ A continuacion, se detallanN los requerimientos exigidos en la guia deL proyecto
 
 ## Manual de Operacion 
 ### Preparar Carpetas de Prueba
-Antes de arrancar, crea una carpeta llamada `origen` y mete un par de archivos dentro (pueden ser archivos de texto, PDFs o cualquier formato):
+Antes de arrancar, se tiene que crear una carpeta llamada `origen` y mete un par de archivos dentro (pueden ser archivos de texto, PDFs o cualquier formato):
 
 ```bash
 mkdir -p origen
@@ -79,7 +79,7 @@ echo "Contenido del archivo de pruebas 1" > origen/tarea.txt
 echo "Simulacion de un documento PDF" > origen/manual.pdf
 ```
 ###  Ejecucion
-Para probar el programa en tu consola y ver la tabla de estadisticas de sincronizacion en tiempo real:
+Para probar el programa en consola y ver la tabla de estadisticas de sincronizacion en tiempo real:
 
 ```bash
 ./minisync origen
@@ -88,12 +88,11 @@ Una vez ejecutado, el programa creara automaticamente la carpeta backup/.
 
 Copiara los archivos de origen a backup/ repartiendo el trabajo entre los Workers.
 
-Veras las estadisticas consolidadas directamente en tu terminal.
+Se podrá ver las estadisticas consolidadas directamente en tu terminal.
 
-Si agregas texto a un archivo o pones un archivo nuevo en origen, veras que en menos de 5 segundos el programa lo detecta y lo copia sin volver a copiar lo que no ha cambiado.
+Si se agrega texto a un archivo o se pone un archivo nuevo en origen, se verá que en menos de 5 segundos el programa lo detecta y lo copia sin volver a copiar lo que no ha cambiado.
 
-Para detener este modo: Presiona Ctrl + C en tu teclado.
-
+Para detener este modo:  Ctrl + C
 
 ### Salida Esperada
 
