@@ -82,11 +82,44 @@ A continuacion, se detallanN los requerimientos exigidos en la guia deL proyecto
 
 
 
-## Compilacion en WSL
+## Manual de Operacion 
+### Preparar Carpetas de Prueba
+Antes de arrancar, crea una carpeta llamada `origen` y mete un par de archivos dentro (pueden ser archivos de texto, PDFs o cualquier formato):
 
-### Compilacion Automatizada
-El proyecto cuenta con un archivo de configuracion modular (`Makefile`) para optimizar el proceso de construccion de los objetos binarios intermedios y el enlazado final de las librerias del sistema de tiempo real (`-lrt`) y control multi-hilo (`-pthread`).
-
-Para compilar el proyecto completo ejecute:
 ```bash
-make
+mkdir -p origen
+echo "Contenido del archivo de pruebas 1" > origen/tarea.txt
+echo "Simulacion de un documento PDF" > origen/manual.pdf
+```
+###  Ejecucion
+Para probar el programa en tu consola y ver la tabla de estadisticas de sincronizacion en tiempo real:
+
+```bash
+./minisync origen
+```
+Una vez ejecutado, el programa creara automaticamente la carpeta backup/.
+
+Copiara los archivos de origen a backup/ repartiendo el trabajo entre los Workers.
+
+Veras las estadisticas consolidadas directamente en tu terminal.
+
+Si agregas texto a un archivo o pones un archivo nuevo en origen, veras que en menos de 5 segundos el programa lo detecta y lo copia sin volver a copiar lo que no ha cambiado.
+
+Para detener este modo: Presiona Ctrl + C en tu teclado.
+
+
+### Salida Esperada
+
+Cuando el Monitor detecta cambios en la carpeta de origen, se inicia la distribucion por los pipes y veras un flujo como este en tu terminal (en modo interactivo):
+
+```text
+[MONITOR] Detectados 2 archivos nuevos/modificados. Lanzando 2 workers.
+[MONITOR] Asignando tarea.txt al Worker 1
+[MONITOR] Asignando manual.pdf al Worker 2
+
+--- ESTADISTICAS DE SINCRONIZACION ---
+Archivos copiados con exito: 2
+Bytes transferidos: 58 bytes
+Errores registrados: 0
+--------------------------------------
+```
